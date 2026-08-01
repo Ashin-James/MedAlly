@@ -167,7 +167,8 @@ export default function ScanScreen({ navigation }: Props) {
           </View>
         </View>
       ) : (
-        <CameraView style={StyleSheet.absoluteFill} ref={cameraRef}>
+        <View style={StyleSheet.absoluteFill}>
+          <CameraView style={StyleSheet.absoluteFill} ref={cameraRef} />
           <View style={styles.overlay}>
             <View style={styles.viewfinderBox}>
               <Text style={styles.guideText}>Position prescription in box</Text>
@@ -187,7 +188,7 @@ export default function ScanScreen({ navigation }: Props) {
               </TouchableOpacity>
             </View>
           </View>
-        </CameraView>
+        </View>
       )}
     </View>
   );
