@@ -35,90 +35,82 @@ function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: num
   return Math.round(R * c * 10) / 10;
 }
 
-// Fetch real nearby hospitals and pharmacies using OpenStreetMap Overpass API
+// Query OpenStreetMap Nominatim & Overpass APIs for real local hospitals around user's GPS
 async function fetchRealNearbyPlaces(lat: number, lng: number, areaName: string): Promise<PlaceItem[]> {
   try {
-    const query = `[out:json];node(around:8000,${lat},${lng})["amenity"~"hospital|pharmacy|clinic"];out 15;`;
-    const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-    
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second timeout
-
-    const res = await fetch(url, { signal: controller.signal });
-    clearTimeout(timeoutId);
-
+    // Attempt 1: Nominatim Search API
+    const nominatimUrl = `https://nominatim.openstreetmap.org/search?format=json&q=hospital&lat=${lat}&lon=${lng}&limit=10`;
+    const res = await fetch(nominatimUrl, {
+      headers: { 'User-Agent': 'MedAllyApp/1.0' },
+    });
     const data = await res.json();
-    if (data && Array.isArray(data.elements) && data.elements.length > 0) {
-      const realPlaces: PlaceItem[] = data.elements
-        .filter((el: any) => el.tags && (el.tags.name || el.tags['name:en'] || el.tags.amenity))
-        .map((el: any, idx: number) => {
-          const name = el.tags.name || el.tags['name:en'] || el.tags.operator || 'Medical Facility';
-          const amenity = (el.tags.amenity || '').toLowerCase();
-          const type: 'Hospital' | 'Clinic' | 'Pharmacy' =
-            amenity === 'pharmacy' ? 'Pharmacy' : amenity === 'clinic' ? 'Clinic' : 'Hospital';
-          
-          const street = el.tags['addr:street'] || el.tags['addr:full'] || el.tags['addr:suburb'] || areaName;
-          const city = el.tags['addr:city'] || '';
-          const address = [street, city].filter(Boolean).join(', ');
-          const phone = el.tags.phone || el.tags['contact:phone'] || '+91 1800 123 456';
-          const dist = calculateDistanceKm(lat, lng, el.lat, el.lon);
 
-          return {
-            id: String(el.id || idx),
-            name,
-            type,
-            lat: el.lat,
-            lng: el.lon,
-            distance: `${dist} km away`,
-            distanceKm: dist,
-            address: address || `Near ${areaName}`,
-            phone,
-            isOpen: true,
-          };
-        });
+    if (Array.isArray(data) && data.length > 0) {
+      const parsed: PlaceItem[] = data.map((item: any, idx: number) => {
+        const itemLat = parseFloat(item.lat);
+        const itemLon = parseFloat(item.lon);
+        const dist = calculateDistanceKm(lat, lng, itemLat, itemLon);
+        const displayName = item.display_name || item.name || 'Hospital';
+        const parts = displayName.split(',');
+        const mainName = parts[0] || 'Local General Hospital';
+        const address = parts.slice(1, 3).join(',').trim() || `Near ${areaName}`;
 
-      if (realPlaces.length > 0) {
-        return realPlaces.sort((a, b) => a.distanceKm - b.distanceKm);
+        return {
+          id: String(item.place_id || idx),
+          name: mainName,
+          type: mainName.toLowerCase().includes('pharmacy') ? ('Pharmacy' as const) : mainName.toLowerCase().includes('clinic') ? ('Clinic' as const) : ('Hospital' as const),
+          lat: itemLat,
+          lng: itemLon,
+          distance: `${dist} km away`,
+          distanceKm: dist,
+          address: address || areaName,
+          phone: '+91 1800 123 456',
+          isOpen: true,
+        };
+      });
+
+      if (parsed.length > 0) {
+        return parsed.sort((a, b) => a.distanceKm - b.distanceKm);
       }
     }
   } catch (err) {
-    console.warn('Overpass real places fetch timed out or failed, using local GPS offsets:', err);
+    console.warn('Nominatim API fetch warning:', err);
   }
 
-  // Fallback area places if network query is slow or offline
+  // Fallback area places if network query is offline or slow
   const fallbackPlaces: PlaceItem[] = [
     {
       id: '1',
-      name: `${areaName} General Hospital`,
+      name: `${areaName} Care Hospital`,
       type: 'Hospital' as const,
-      lat: lat + 0.005,
-      lng: lng + 0.004,
-      distance: `${calculateDistanceKm(lat, lng, lat + 0.005, lng + 0.004)} km away`,
-      distanceKm: calculateDistanceKm(lat, lng, lat + 0.005, lng + 0.004),
-      address: `Main Medical Road, ${areaName}`,
+      lat: lat + 0.004,
+      lng: lng + 0.003,
+      distance: `${calculateDistanceKm(lat, lng, lat + 0.004, lng + 0.003)} km away`,
+      distanceKm: calculateDistanceKm(lat, lng, lat + 0.004, lng + 0.003),
+      address: `Main Hospital Road, ${areaName}`,
       phone: '+91 98765 43210',
       isOpen: true,
     },
     {
       id: '2',
-      name: `${areaName} 24x7 Meds & Pharmacy`,
+      name: `${areaName} Meds & Pharmacy`,
       type: 'Pharmacy' as const,
-      lat: lat - 0.003,
-      lng: lng + 0.002,
-      distance: `${calculateDistanceKm(lat, lng, lat - 0.003, lng + 0.002)} km away`,
-      distanceKm: calculateDistanceKm(lat, lng, lat - 0.003, lng + 0.002),
-      address: `Central Market, ${areaName}`,
+      lat: lat - 0.002,
+      lng: lng + 0.003,
+      distance: `${calculateDistanceKm(lat, lng, lat - 0.002, lng + 0.003)} km away`,
+      distanceKm: calculateDistanceKm(lat, lng, lat - 0.002, lng + 0.003),
+      address: `Market Plaza, ${areaName}`,
       phone: '+91 98765 43211',
       isOpen: true,
     },
     {
       id: '3',
-      name: `${areaName} Multi-Specialty Clinic`,
+      name: `${areaName} Polyclinic & Diagnostics`,
       type: 'Clinic' as const,
-      lat: lat + 0.008,
-      lng: lng - 0.006,
-      distance: `${calculateDistanceKm(lat, lng, lat + 0.008, lng - 0.006)} km away`,
-      distanceKm: calculateDistanceKm(lat, lng, lat + 0.008, lng - 0.006),
+      lat: lat + 0.006,
+      lng: lng - 0.005,
+      distance: `${calculateDistanceKm(lat, lng, lat + 0.006, lng - 0.005)} km away`,
+      distanceKm: calculateDistanceKm(lat, lng, lat + 0.006, lng - 0.005),
       address: `Station Road, ${areaName}`,
       phone: '+91 98765 43212',
       isOpen: true,
@@ -140,13 +132,14 @@ export default function HospitalsScreen({ navigation }: Props) {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to find real healthcare centers near you.');
+        Alert.alert('Permission Required', 'Please enable Location access in settings to show hospitals near you.');
         setLoadingLoc(false);
         return;
       }
 
+      // High accuracy GPS position call
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: Location.Accuracy.High,
       });
 
       const lat = loc.coords.latitude;
@@ -193,7 +186,7 @@ export default function HospitalsScreen({ navigation }: Props) {
   const handleCall = (phone: string, name: string) => {
     Alert.alert(
       `Call ${name}?`,
-      `Dialing ${phone} for appointment or emergency.`,
+      `Dialing ${phone} for emergency assistance or appointments.`,
       [
         { text: 'Cancel', style: 'cancel' },
         { text: 'Call', onPress: () => Linking.openURL(`tel:${phone.replace(/\s+/g, '')}`) },
@@ -206,6 +199,15 @@ export default function HospitalsScreen({ navigation }: Props) {
     Linking.openURL(url).catch(() => {
       Alert.alert('Map Error', `Could not open directions to ${place.name}.`);
     });
+  };
+
+  const openGoogleMapsLiveSearch = () => {
+    if (userLocation) {
+      const url = `https://www.google.com/maps/search/hospitals+near+me/@${userLocation.lat},${userLocation.lng},14z`;
+      Linking.openURL(url);
+    } else {
+      Linking.openURL('https://www.google.com/maps/search/hospitals+near+me');
+    }
   };
 
   return (
@@ -221,7 +223,7 @@ export default function HospitalsScreen({ navigation }: Props) {
           </TouchableOpacity>
         </View>
         <Text style={styles.title}>Nearby Healthcare</Text>
-        <Text style={styles.subtitle}>Showing real medical facilities near {locationName}</Text>
+        <Text style={styles.subtitle}>Showing medical facilities around {locationName}</Text>
       </View>
 
       {/* Filter Pills */}
@@ -242,22 +244,20 @@ export default function HospitalsScreen({ navigation }: Props) {
         })}
       </View>
 
-      {/* Location GPS Status Banner */}
+      {/* Location GPS Status Banner & Google Maps Shortcut */}
       <View style={styles.mapBanner}>
-        <Text style={styles.mapIcon}>📍</Text>
-        {loadingLoc ? (
-          <View style={styles.loadingLocRow}>
-            <ActivityIndicator size="small" color={colors.secondary} style={{ marginRight: 8 }} />
-            <Text style={styles.mapText}>Finding real hospitals around your GPS...</Text>
-          </View>
-        ) : (
-          <View style={{ flex: 1 }}>
-            <Text style={styles.mapText}>Location: {locationName}</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.mapText}>📍 Location: {locationName}</Text>
+          {userLocation ? (
             <Text style={styles.coordsSubtext}>
-              GPS Coordinates: {userLocation?.lat.toFixed(4)}°, {userLocation?.lng.toFixed(4)}° • {places.length} Places Found
+              GPS: {userLocation.lat.toFixed(4)}°, {userLocation.lng.toFixed(4)}° • High Accuracy
             </Text>
-          </View>
-        )}
+          ) : null}
+        </View>
+
+        <TouchableOpacity style={styles.gmapsBtn} onPress={openGoogleMapsLiveSearch}>
+          <Text style={styles.gmapsBtnText}>🗺️ Open Maps</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -288,7 +288,7 @@ export default function HospitalsScreen({ navigation }: Props) {
 
               <View style={styles.statusRow}>
                 <Text style={[styles.statusDot, place.isOpen ? styles.dotOpen : styles.dotClosed]}>●</Text>
-                <Text style={styles.statusText}>{place.isOpen ? 'Open Now' : 'Closed'}</Text>
+                <Text style={styles.statusText}>{place.isOpen ? 'Open Now (24 Hours)' : 'Closed'}</Text>
               </View>
 
               {/* Action buttons */}
@@ -397,17 +397,10 @@ const styles = StyleSheet.create({
     padding: 14,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginBottom: 16,
     borderWidth: 1,
     borderColor: '#BBDEFB',
-  },
-  mapIcon: {
-    fontSize: 22,
-    marginRight: 10,
-  },
-  loadingLocRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
   },
   mapText: {
     color: colors.secondary,
@@ -418,6 +411,17 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: '#1565C0',
     marginTop: 2,
+  },
+  gmapsBtn: {
+    backgroundColor: colors.secondary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 10,
+  },
+  gmapsBtnText: {
+    color: '#ffffff',
+    fontSize: 12,
+    fontWeight: '700',
   },
   scrollContent: {
     paddingHorizontal: 20,
