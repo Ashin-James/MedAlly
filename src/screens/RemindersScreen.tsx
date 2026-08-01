@@ -1,25 +1,21 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
 import * as Notifications from 'expo-notifications';
-import Constants, { ExecutionEnvironment } from 'expo-constants';
 import { colors } from '../theme/colors';
 
-const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
-
-if (!isExpoGo) {
-  try {
-    Notifications.setNotificationHandler({
-      handleNotification: async () => ({
-        shouldShowAlert: true,
-        shouldPlaySound: true,
-        shouldSetBadge: false,
-        shouldShowBanner: true,
-        shouldShowList: true,
-      }),
-    });
-  } catch (e) {
-    console.warn('Expo Go Notifications warning:', e);
-  }
+// Configure local notification behavior safely
+try {
+  Notifications.setNotificationHandler({
+    handleNotification: async () => ({
+      shouldShowAlert: true,
+      shouldPlaySound: true,
+      shouldSetBadge: false,
+      shouldShowBanner: true,
+      shouldShowList: true,
+    }),
+  });
+} catch (e) {
+  console.warn('Local notifications setup:', e);
 }
 
 interface ScheduleItem {
@@ -68,20 +64,19 @@ export default function RemindersScreen() {
 
   useEffect(() => {
     (async () => {
-      if (isExpoGo) return; // Skip push/remote notification setup in Expo Go
       try {
+        // Request local notification permissions only
         const { status } = await Notifications.requestPermissionsAsync();
         if (status === 'granted') {
           scheduleInitialNotifications();
         }
       } catch (err) {
-        console.warn('Notifications permission check ignored:', err);
+        console.warn('Local notification permission check:', err);
       }
     })();
   }, []);
 
   const scheduleInitialNotifications = async () => {
-    if (isExpoGo) return;
     for (const item of schedule) {
       if (item.status === 'pending' && !item.notificationId) {
         try {
@@ -97,7 +92,7 @@ export default function RemindersScreen() {
             prev.map((s) => (s.id === item.id ? { ...s, notificationId: id } : s))
           );
         } catch (e) {
-          console.warn('Failed to schedule notification:', e);
+          console.warn('Failed to schedule local notification:', e);
         }
       }
     }
@@ -110,7 +105,7 @@ export default function RemindersScreen() {
     const nextStatus = targetItem.status === newStatus ? 'pending' : newStatus;
 
     if (nextStatus === 'taken' || nextStatus === 'skipped') {
-      if (targetItem.notificationId && !isExpoGo) {
+      if (targetItem.notificationId) {
         try {
           await Notifications.cancelScheduledNotificationAsync(targetItem.notificationId);
         } catch (e) {
@@ -124,19 +119,17 @@ export default function RemindersScreen() {
       );
     } else {
       let newNotifId: string | undefined = undefined;
-      if (!isExpoGo) {
-        try {
-          newNotifId = await Notifications.scheduleNotificationAsync({
-            content: {
-              title: `💊 Medication Reminder: ${targetItem.medicine}`,
-              body: `${targetItem.timeSlot} dose (${targetItem.dosage}): ${targetItem.instructions}`,
-              data: { itemId: targetItem.id },
-            },
-            trigger: { seconds: 10, repeats: false } as any,
-          });
-        } catch (e) {
-          console.warn('Could not reschedule notification:', e);
-        }
+      try {
+        newNotifId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `💊 Medication Reminder: ${targetItem.medicine}`,
+            body: `${targetItem.timeSlot} dose (${targetItem.dosage}): ${targetItem.instructions}`,
+            data: { itemId: targetItem.id },
+          },
+          trigger: { seconds: 10, repeats: false } as any,
+        });
+      } catch (e) {
+        console.warn('Could not reschedule notification:', e);
       }
       setSchedule((prev) =>
         prev.map((item) =>
