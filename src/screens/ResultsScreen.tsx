@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -50,9 +51,24 @@ export default function ResultsScreen({ route, navigation }: Props) {
     Alert.alert('🔊 Audio Playback', `Reading audio explanation for ${medName}...`);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaved(true);
-    Alert.alert('💾 Saved to History', 'This prescription has been saved to your timeline.');
+    try {
+      const newScan = {
+        id: Date.now().toString(),
+        date: new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }),
+        doctor: 'Prescription Scan',
+        medCount: medications.length,
+        medicines: medications.map((m) => `${m.medicine || 'Medicine'} ${m.dosage || ''}`.trim()),
+      };
+      const existing = await AsyncStorage.getItem('@medally_history');
+      const parsed = existing ? JSON.parse(existing) : [];
+      const updated = [newScan, ...parsed];
+      await AsyncStorage.setItem('@medally_history', JSON.stringify(updated));
+      Alert.alert('💾 Saved to History', 'This prescription has been saved to your timeline.');
+    } catch (err) {
+      Alert.alert('Save Error', 'Could not save prescription to local history.');
+    }
   };
 
   const handleShare = () => {

@@ -7,12 +7,19 @@ import { colors } from '../theme/colors';
 export default function HomeScreen({ navigation }: any) {
   const triggerSOS = () => {
     Alert.alert(
-      'Call emergency contact now?',
-      'Dialing +911234567890 for emergency medical assistance.',
+      'Emergency SOS Options',
+      'Choose how to contact emergency assistance (+911234567890):',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Call',
+          text: '💬 Send SMS',
+          onPress: () =>
+            Linking.openURL(
+              'sms:+911234567890?body=I%20need%20help%2C%20please%20contact%20me.'
+            ),
+        },
+        {
+          text: '📞 Phone Call',
           style: 'destructive',
           onPress: () => Linking.openURL('tel:+911234567890'),
         },

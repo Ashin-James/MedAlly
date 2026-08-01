@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TextInput, TouchableOpacity } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
 
 interface HistoryItem {
@@ -35,10 +36,27 @@ const mockHistory: HistoryItem[] = [
 ];
 
 export default function HistoryScreen() {
+  const [history, setHistory] = useState<HistoryItem[]>(mockHistory);
   const [search, setSearch] = useState('');
   const [expandedId, setExpandedId] = useState<string | null>('1');
 
-  const filtered = mockHistory.filter(
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@medally_history');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setHistory([...parsed, ...mockHistory]);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load history:', err);
+      }
+    })();
+  }, []);
+
+  const filtered = history.filter(
     (item) =>
       item.doctor.toLowerCase().includes(search.toLowerCase()) ||
       item.medicines.some((m) => m.toLowerCase().includes(search.toLowerCase()))
