@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
 
 interface ScheduleItem {
@@ -44,17 +45,70 @@ const initialSchedule: ScheduleItem[] = [
 
 export default function RemindersScreen() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(initialSchedule);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newMedName, setNewMedName] = useState('');
+  const [newDosage, setNewDosage] = useState('');
+  const [newTime, setNewTime] = useState('09:00 AM');
+  const [newInstructions, setNewInstructions] = useState('Take with water');
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@medally_reminders');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setSchedule(parsed);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load reminders:', err);
+      }
+    })();
+  }, []);
+
+  const saveReminders = async (updated: ScheduleItem[]) => {
+    setSchedule(updated);
+    try {
+      await AsyncStorage.setItem('@medally_reminders', JSON.stringify(updated));
+    } catch (err) {
+      console.warn('Failed to save reminders:', err);
+    }
+  };
 
   const toggleStatus = (id: string, newStatus: 'taken' | 'skipped') => {
-    setSchedule((prev) =>
-      prev.map((item) => {
-        if (item.id === id) {
-          const nextStatus = item.status === newStatus ? 'pending' : newStatus;
-          return { ...item, status: nextStatus };
-        }
-        return item;
-      })
-    );
+    const updated: ScheduleItem[] = schedule.map((item) => {
+      if (item.id === id) {
+        const nextStatus = (item.status === newStatus ? 'pending' : newStatus) as 'pending' | 'taken' | 'skipped';
+        return { ...item, status: nextStatus };
+      }
+      return item;
+    });
+    saveReminders(updated);
+  };
+
+  const handleAddReminder = () => {
+    if (!newMedName.trim()) {
+      Alert.alert('Required', 'Please enter medicine name.');
+      return;
+    }
+
+    const newItem: ScheduleItem = {
+      id: Date.now().toString(),
+      timeSlot: 'Morning',
+      timeText: newTime || '09:00 AM',
+      medicine: newMedName.trim(),
+      dosage: newDosage.trim() || '1 Tablet',
+      instructions: newInstructions.trim() || 'Take after meals',
+      status: 'pending',
+    };
+
+    const updated = [newItem, ...schedule];
+    saveReminders(updated);
+    setNewMedName('');
+    setNewDosage('');
+    setIsModalOpen(false);
+    Alert.alert('Reminder Added', `Added ${newItem.medicine} to daily schedule.`);
   };
 
   const takenCount = schedule.filter((s) => s.status === 'taken').length;
@@ -63,8 +117,15 @@ export default function RemindersScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Medicine Schedule</Text>
-        <Text style={styles.headerSubtitle}>Track your daily dosages & medicine reminders</Text>
+        <View style={styles.headerRow}>
+          <View>
+            <Text style={styles.headerTitle}>Medicine Schedule</Text>
+            <Text style={styles.headerSubtitle}>Track your daily dosages & medicine reminders</Text>
+          </View>
+          <TouchableOpacity style={styles.addBtnHeader} onPress={() => setIsModalOpen(true)}>
+            <Text style={styles.addBtnHeaderText}>+ Add</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Progress Card */}
@@ -79,7 +140,7 @@ export default function RemindersScreen() {
           <View
             style={[
               styles.progressBarFill,
-              { width: `${(takenCount / schedule.length) * 100}%` },
+              { width: `${schedule.length > 0 ? (takenCount / schedule.length) * 100 : 0}%` },
             ]}
           />
         </View>
@@ -132,6 +193,56 @@ export default function RemindersScreen() {
           );
         })}
       </ScrollView>
+
+      {/* Add Reminder Modal */}
+      <Modal visible={isModalOpen} animationType="slide" transparent>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Add Medicine Reminder</Text>
+            
+            <Text style={styles.inputLabel}>Medicine Name</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. Amoxicillin 500mg"
+              value={newMedName}
+              onChangeText={setNewMedName}
+            />
+
+            <Text style={styles.inputLabel}>Dosage</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 1 Tablet"
+              value={newDosage}
+              onChangeText={setNewDosage}
+            />
+
+            <Text style={styles.inputLabel}>Time</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. 08:00 AM"
+              value={newTime}
+              onChangeText={setNewTime}
+            />
+
+            <Text style={styles.inputLabel}>Instructions</Text>
+            <TextInput
+              style={styles.modalInput}
+              placeholder="e.g. Take after meals with water"
+              value={newInstructions}
+              onChangeText={setNewInstructions}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsModalOpen(false)}>
+                <Text style={styles.modalCancelText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalSubmitBtn} onPress={handleAddReminder}>
+                <Text style={styles.modalSubmitText}>Save Reminder</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -146,6 +257,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingBottom: 16,
   },
+  headerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: {
     fontSize: 26,
     fontWeight: 'bold',
@@ -155,6 +271,17 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: colors.textSecondary,
     marginTop: 4,
+  },
+  addBtnHeader: {
+    backgroundColor: colors.primary,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 12,
+  },
+  addBtnHeaderText: {
+    color: '#ffffff',
+    fontWeight: '700',
+    fontSize: 14,
   },
   progressCard: {
     backgroundColor: colors.primary,
@@ -276,5 +403,66 @@ const styles = StyleSheet.create({
   },
   textGray: {
     color: colors.textSecondary,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+  },
+  modalCard: {
+    backgroundColor: '#ffffff',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: colors.textPrimary,
+    marginBottom: 16,
+  },
+  inputLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: colors.textSecondary,
+    marginBottom: 4,
+    marginTop: 8,
+  },
+  modalInput: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 15,
+    color: colors.textPrimary,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    gap: 12,
+    marginTop: 20,
+  },
+  modalCancelBtn: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+  },
+  modalCancelText: {
+    color: colors.textSecondary,
+    fontWeight: '600',
+  },
+  modalSubmitBtn: {
+    backgroundColor: colors.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  modalSubmitText: {
+    color: '#ffffff',
+    fontWeight: '700',
   },
 });

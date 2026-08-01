@@ -1,9 +1,34 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { colors } from '../theme/colors';
 import MedAllyLogo from '../components/MedAllyLogo';
 
 export default function HomeScreen({ navigation }: any) {
+  const [reminders, setReminders] = React.useState<any[]>([]);
+
+  React.useEffect(() => {
+    const loadReminders = async () => {
+      try {
+        const stored = await AsyncStorage.getItem('@medally_reminders');
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (Array.isArray(parsed)) {
+            setReminders(parsed);
+          }
+        } else {
+          setReminders([
+            { id: '1', medicine: 'Amoxicillin 500mg', timeText: '08:00 AM', instructions: 'After Breakfast', status: 'taken' },
+            { id: '2', medicine: 'Paracetamol 650mg', timeText: '02:00 PM', instructions: 'After Lunch', status: 'pending' },
+          ]);
+        }
+      } catch (err) {
+        console.warn('Failed to load home reminders:', err);
+      }
+    };
+    loadReminders();
+  }, []);
+
   const triggerSOS = () => {
     Alert.alert(
       'Emergency SOS Options',
@@ -112,27 +137,32 @@ export default function HomeScreen({ navigation }: any) {
             </TouchableOpacity>
           </View>
 
-          <View style={styles.scheduleItem}>
-            <View style={styles.scheduleDot} />
-            <View style={styles.scheduleDetails}>
-              <Text style={styles.medName}>Amoxicillin 500mg</Text>
-              <Text style={styles.medTime}>08:00 AM • After Breakfast</Text>
-            </View>
-            <View style={styles.statusBadgeCompleted}>
-              <Text style={styles.statusTextCompleted}>✓ Taken</Text>
-            </View>
-          </View>
-
-          <View style={styles.scheduleItem}>
-            <View style={[styles.scheduleDot, styles.dotPending]} />
-            <View style={styles.scheduleDetails}>
-              <Text style={styles.medName}>Paracetamol 650mg</Text>
-              <Text style={styles.medTime}>02:00 PM • After Lunch</Text>
-            </View>
-            <View style={styles.statusBadgePending}>
-              <Text style={styles.statusTextPending}>Pending</Text>
-            </View>
-          </View>
+          {reminders.length === 0 ? (
+            <Text style={styles.subtitle}>No reminders scheduled yet.</Text>
+          ) : (
+            reminders.slice(0, 3).map((item, idx) => (
+              <View key={item.id || idx} style={styles.scheduleItem}>
+                <View style={[styles.scheduleDot, item.status !== 'taken' && styles.dotPending]} />
+                <View style={styles.scheduleDetails}>
+                  <Text style={styles.medName}>{item.medicine}</Text>
+                  <Text style={styles.medTime}>{item.timeText} • {item.instructions}</Text>
+                </View>
+                {item.status === 'taken' ? (
+                  <View style={styles.statusBadgeCompleted}>
+                    <Text style={styles.statusTextCompleted}>✓ Taken</Text>
+                  </View>
+                ) : item.status === 'skipped' ? (
+                  <View style={styles.statusBadgePending}>
+                    <Text style={styles.statusTextPending}>Skipped</Text>
+                  </View>
+                ) : (
+                  <View style={styles.statusBadgePending}>
+                    <Text style={styles.statusTextPending}>Pending</Text>
+                  </View>
+                )}
+              </View>
+            ))
+          )}
         </View>
 
         {/* Safety Disclaimer Banner */}
