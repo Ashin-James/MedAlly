@@ -7,13 +7,14 @@ import * as FileSystem from 'expo-file-system';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { scanPrescription } from '../services/geminiVision';
+import MedAllyLogo from '../components/MedAllyLogo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
 
 const loadingMessages = [
   "🧠 Reading your prescription...",
-  "💊 Identifying medicines...",
-  "✨ Preparing results..."
+  "💊 Identifying medicines & dosages...",
+  "✨ Preparing AI safety insights..."
 ];
 
 export default function ScanScreen({ navigation }: Props) {
@@ -143,8 +144,17 @@ export default function ScanScreen({ navigation }: Props) {
     <View style={styles.container}>
       {loading ? (
         <View style={styles.loadingContainer}>
-          <Text style={styles.loadingText}>{loadingMessages[loadingMsgIndex]}</Text>
-          <ActivityIndicator size="large" color="#0284c7" style={{ marginTop: 16 }} />
+          {/* Logo Brand Loading Card */}
+          <View style={styles.loadingCard}>
+            <View style={styles.loadingLogoWrap}>
+              <MedAllyLogo size="medium" showText={true} />
+            </View>
+            <ActivityIndicator size="large" color="#2563EB" style={{ marginVertical: 20 }} />
+            <Text style={styles.loadingText}>{loadingMessages[loadingMsgIndex]}</Text>
+            <View style={styles.aiBadge}>
+              <Text style={styles.aiBadgeText}>⚡ Powered by Gemini 2.5 AI</Text>
+            </View>
+          </View>
         </View>
       ) : errorMessage ? (
         <View style={styles.errorContainer}>
@@ -209,15 +219,53 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   loadingContainer: {
+    flex: 1,
+    width: '100%',
+    backgroundColor: '#0F172A',
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 24,
   },
+  loadingCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 24,
+    padding: 32,
+    width: '100%',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#334155',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  loadingLogoWrap: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 28,
+    borderRadius: 20,
+  },
   loadingText: {
-    color: '#ffffff',
-    fontSize: 18,
-    fontWeight: '600',
+    color: '#F8FAFC',
+    fontSize: 17,
+    fontWeight: '700',
     textAlign: 'center',
+    minHeight: 48,
+  },
+  aiBadge: {
+    backgroundColor: 'rgba(37, 99, 235, 0.15)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 12,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.3)',
+  },
+  aiBadgeText: {
+    color: '#38BDF8',
+    fontSize: 13,
+    fontWeight: '600',
   },
   errorContainer: {
     flex: 1,

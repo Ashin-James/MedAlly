@@ -1,8 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
-import { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
+import MedAllyLogo from '../components/MedAllyLogo';
 
 export default function HomeScreen({ navigation }: any) {
   const triggerSOS = () => {
@@ -32,10 +31,9 @@ export default function HomeScreen({ navigation }: any) {
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Header */}
         <View style={styles.headerRow}>
-          <View>
-            <Text style={styles.brandTitle}>MediGuide AI / MedAlly</Text>
+          <View style={styles.brandGroup}>
+            <MedAllyLogo size="small" showText={true} />
             <Text style={styles.greeting}>Hello, Ashin 👋</Text>
-            <Text style={styles.subtitle}>Your AI Medical Companion</Text>
           </View>
           <TouchableOpacity style={styles.sosButton} onPress={triggerSOS} activeOpacity={0.8}>
             <Text style={styles.sosText}>🆘 SOS</Text>
@@ -164,6 +162,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 20,
+  },
+  brandGroup: {
+    alignItems: 'flex-start',
   },
   brandTitle: {
     fontSize: 12,

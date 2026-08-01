@@ -1,30 +1,64 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
+import MedAllyLogo from '../components/MedAllyLogo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Splash'>;
 
 export default function SplashScreen({ navigation }: Props) {
   return (
     <View style={styles.container}>
-      <View style={styles.content}>
-        <View style={styles.iconCircle}>
-          <Text style={styles.iconEmoji}>💊</Text>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        {/* Brand Hero */}
+        <View style={styles.heroSection}>
+          <View style={styles.logoBadgeContainer}>
+            <MedAllyLogo size="large" showText={true} variant="dark" />
+          </View>
+          <Text style={styles.tagline}>Your Intelligent AI Healthcare Companion</Text>
+          <Text style={styles.description}>
+            Instantly translate prescriptions, understand dosage guidelines, and manage dosage reminders with medical precision.
+          </Text>
         </View>
-        <Text style={styles.brandTitle}>MedAlly</Text>
-        <Text style={styles.tagline}>
-          Your Smart AI Prescription Assistant
-        </Text>
-      </View>
 
-      <TouchableOpacity
-        onPress={() => navigation.replace('Auth')}
-        style={styles.primaryButton}
-        activeOpacity={0.85}
-      >
-        <Text style={styles.primaryButtonText}>Get Started</Text>
-      </TouchableOpacity>
+        {/* Feature Highlights Grid */}
+        <View style={styles.featuresContainer}>
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>📸</Text>
+            <View style={styles.featureTextGroup}>
+              <Text style={styles.featureTitle}>Gemini AI Vision Scan</Text>
+              <Text style={styles.featureDesc}>Extract medicines & timings from handwritten prescriptions</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>🎤</Text>
+            <View style={styles.featureTextGroup}>
+              <Text style={styles.featureTitle}>Voice AI & Text-to-Speech</Text>
+              <Text style={styles.featureDesc}>Ask questions and listen to clear dosage explanations out loud</Text>
+            </View>
+          </View>
+
+          <View style={styles.featureCard}>
+            <Text style={styles.featureIcon}>📍</Text>
+            <View style={styles.featureTextGroup}>
+              <Text style={styles.featureTitle}>Nearby Hospitals & Emergency SOS</Text>
+              <Text style={styles.featureDesc}>Locate healthcare centers & call/SMS emergency contacts instantly</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Bottom CTA */}
+        <TouchableOpacity
+          onPress={() => navigation.replace('Auth')}
+          style={styles.primaryButton}
+          activeOpacity={0.88}
+        >
+          <Text style={styles.primaryButtonText}>Get Started →</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.footerNote}>🔒 Secure & Private • Powered by Gemini AI</Text>
+      </ScrollView>
     </View>
   );
 }
@@ -32,61 +66,102 @@ export default function SplashScreen({ navigation }: Props) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#0f172a',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 120,
-    paddingBottom: 50,
+    backgroundColor: '#0F172A', // Premium dark slate background
   },
-  content: {
+  scrollContent: {
+    paddingHorizontal: 24,
+    paddingTop: 70,
+    paddingBottom: 40,
     alignItems: 'center',
+  },
+  heroSection: {
+    alignItems: 'center',
+    marginBottom: 32,
     width: '100%',
   },
-  iconCircle: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: 'rgba(56, 189, 248, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 24,
+  logoBadgeContainer: {
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    paddingVertical: 24,
+    paddingHorizontal: 36,
+    borderRadius: 32,
+    marginBottom: 20,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 16,
+    elevation: 8,
     borderWidth: 1,
-    borderColor: 'rgba(56, 189, 248, 0.2)',
-  },
-  iconEmoji: {
-    fontSize: 44,
-  },
-  brandTitle: {
-    fontSize: 38,
-    fontWeight: '800',
-    color: '#38bdf8',
-    letterSpacing: 0.5,
-    marginBottom: 8,
+    borderColor: 'rgba(56, 189, 248, 0.3)',
   },
   tagline: {
-    fontSize: 16,
-    color: '#94a3b8',
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#F8FAFC',
     textAlign: 'center',
-    lineHeight: 24,
-    paddingHorizontal: 20,
+    marginTop: 8,
+  },
+  description: {
+    fontSize: 14,
+    color: '#94A3B8',
+    textAlign: 'center',
+    marginTop: 10,
+    lineHeight: 22,
+    paddingHorizontal: 12,
+  },
+  featuresContainer: {
+    width: '100%',
+    marginBottom: 32,
+    gap: 12,
+  },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#1E293B',
+    borderRadius: 18,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  featureIcon: {
+    fontSize: 26,
+    marginRight: 14,
+  },
+  featureTextGroup: {
+    flex: 1,
+  },
+  featureTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#38BDF8',
+  },
+  featureDesc: {
+    fontSize: 13,
+    color: '#94A3B8',
+    marginTop: 2,
+    lineHeight: 18,
   },
   primaryButton: {
-    backgroundColor: '#0284c7',
+    backgroundColor: '#2563EB',
     paddingVertical: 16,
-    paddingHorizontal: 32,
-    borderRadius: 14,
+    borderRadius: 16,
     width: '100%',
     alignItems: 'center',
-    shadowColor: '#0284c7',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 6,
+    marginBottom: 16,
   },
   primaryButtonText: {
-    color: '#ffffff',
-    fontSize: 17,
-    fontWeight: '700',
+    color: '#FFFFFF',
+    fontSize: 18,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+  },
+  footerNote: {
+    fontSize: 12,
+    color: '#64748B',
+    textAlign: 'center',
   },
 });

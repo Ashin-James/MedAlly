@@ -4,6 +4,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
+import MedAllyLogo from '../components/MedAllyLogo';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Auth'>;
 
@@ -73,8 +74,8 @@ export default function AuthScreen({ navigation }: Props) {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>🔐</Text>
+          <View style={styles.logoWrap}>
+            <MedAllyLogo size="medium" showText={true} />
           </View>
           <Text style={styles.title}>{isLogin ? 'Welcome Back' : 'Create Account'}</Text>
           <Text style={styles.subtitle}>
@@ -161,13 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 30,
   },
-  iconCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: colors.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoWrap: {
     marginBottom: 16,
   },
   iconText: {
