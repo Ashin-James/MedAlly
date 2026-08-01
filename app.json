@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "MedAlly",
-    "slug": "medally",
+    "slug": "MedAlly",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -25,7 +25,7 @@
     },
     "extra": {
       "eas": {
-        "projectId": "fee362c4-e1e3-41b3-b730-b97f7af54b3c"
+        "projectId": "51af6f62-d368-45ab-8e6e-ecdfd05aac79"
       }
     },
     "owner": "ashin_james"
