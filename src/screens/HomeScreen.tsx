@@ -69,7 +69,7 @@ export default function HomeScreen({ navigation }: any) {
 
           <TouchableOpacity
             style={styles.actionTile}
-            onPress={() => Alert.alert('Ask AI Assistant', 'AI Voice Assistant listening... How can I help with your medicines?')}
+            onPress={() => navigation.navigate('VoiceAI')}
           >
             <View style={[styles.tileIconBg, { backgroundColor: colors.secondaryLight }]}>
               <Text style={styles.tileIcon}>🎤</Text>

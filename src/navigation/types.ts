@@ -7,9 +7,11 @@ export type BottomTabParamList = {
 
 export type RootStackParamList = {
   Splash: undefined;
+  Auth: undefined;
   MainTabs: { screen?: keyof BottomTabParamList } | undefined;
   Scan: undefined;
   Results: { data?: any; imageBase64?: string } | undefined;
   Hospitals: undefined;
   Translation: { data?: any } | undefined;
+  VoiceAI: undefined;
 };

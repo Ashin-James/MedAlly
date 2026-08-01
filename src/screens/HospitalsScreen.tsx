@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import * as Location from 'expo-location';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -10,17 +11,21 @@ interface PlaceItem {
   id: string;
   name: string;
   type: 'Hospital' | 'Clinic' | 'Pharmacy';
+  lat: number;
+  lng: number;
   distance: string;
   address: string;
   phone: string;
   isOpen: boolean;
 }
 
-const mockPlaces: PlaceItem[] = [
+const initialPlaces: PlaceItem[] = [
   {
     id: '1',
     name: 'City Care General Hospital',
     type: 'Hospital',
+    lat: 12.9716,
+    lng: 77.5946,
     distance: '0.8 km',
     address: '45 Healthcare Ave, Block B',
     phone: '+1 800 555 0199',
@@ -30,6 +35,8 @@ const mockPlaces: PlaceItem[] = [
     id: '2',
     name: 'LifeLine Pharmacy & Surgical',
     type: 'Pharmacy',
+    lat: 12.9750,
+    lng: 77.5980,
     distance: '1.2 km',
     address: '12 Main Street, Market Plaza',
     phone: '+1 800 555 0144',
@@ -39,6 +46,8 @@ const mockPlaces: PlaceItem[] = [
     id: '3',
     name: 'Apex Super Specialty Clinic',
     type: 'Clinic',
+    lat: 12.9800,
+    lng: 77.6000,
     distance: '2.5 km',
     address: '88 Wellness Boulevard',
     phone: '+1 800 555 0177',
@@ -46,10 +55,53 @@ const mockPlaces: PlaceItem[] = [
   },
 ];
 
+// Haversine formula to compute distance in km
+function calculateDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371; // Earth's radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c * 10) / 10;
+}
+
 export default function HospitalsScreen({ navigation }: Props) {
   const [selectedCategory, setSelectedCategory] = useState<'All' | 'Hospital' | 'Clinic' | 'Pharmacy'>('All');
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [places, setPlaces] = useState<PlaceItem[]>(initialPlaces);
 
-  const filteredPlaces = mockPlaces.filter(
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Location.requestForegroundPermissionsAsync();
+        if (status === 'granted') {
+          const loc = await Location.getCurrentPositionAsync({});
+          const lat = loc.coords.latitude;
+          const lng = loc.coords.longitude;
+          setUserLocation({ lat, lng });
+
+          // Update places distances based on real coordinates
+          const updated = initialPlaces.map((p) => {
+            const dist = calculateDistanceKm(lat, lng, p.lat, p.lng);
+            return {
+              ...p,
+              distance: `${dist} km from you`,
+            };
+          });
+          setPlaces(updated);
+        }
+      } catch (err) {
+        console.warn('Location request failed:', err);
+      }
+    })();
+  }, []);
+
+  const filteredPlaces = places.filter(
     (p) => selectedCategory === 'All' || p.type === selectedCategory
   );
 
@@ -93,7 +145,11 @@ export default function HospitalsScreen({ navigation }: Props) {
       {/* Map View Indicator Placeholder */}
       <View style={styles.mapBanner}>
         <Text style={styles.mapIcon}>🗺️</Text>
-        <Text style={styles.mapText}>Interactive Hospital Map Ready (3 nearby markers)</Text>
+        <Text style={styles.mapText}>
+          {userLocation
+            ? `Centered at Lat ${userLocation.lat.toFixed(2)}, Lon ${userLocation.lng.toFixed(2)}`
+            : 'Interactive Hospital Map Ready (Requesting Location...)'}
+        </Text>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -215,8 +271,9 @@ const styles = StyleSheet.create({
   },
   mapText: {
     color: colors.secondary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
+    flex: 1,
   },
   scrollContent: {
     paddingHorizontal: 20,

@@ -1,13 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking } from 'react-native';
 import { colors } from '../theme/colors';
+import { useAccessibility } from '../context/AccessibilityContext';
 
 export default function ProfileScreen() {
-  const [largeFont, setLargeFont] = useState(false);
-  const [highContrast, setHighContrast] = useState(false);
-  const [voiceMode, setVoiceMode] = useState(true);
-  const [simpleLanguage, setSimpleLanguage] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const {
+    largeFont,
+    highContrast,
+    voiceMode,
+    simpleLanguage,
+    darkMode,
+    setLargeFont,
+    setHighContrast,
+    setVoiceMode,
+    setSimpleLanguage,
+    setDarkMode,
+    backgroundColor,
+    textColor,
+    cardColor,
+    fontSizeMultiplier,
+  } = useAccessibility();
 
   const emergencyCall = () => {
     Alert.alert(
@@ -25,14 +37,14 @@ export default function ProfileScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor }]}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* Profile Card */}
-        <View style={styles.profileCard}>
+        <View style={[styles.profileCard, { backgroundColor: cardColor }]}>
           <View style={styles.avatarCircle}>
             <Text style={styles.avatarText}>AJ</Text>
           </View>
-          <Text style={styles.userName}>Ashin James</Text>
+          <Text style={[styles.userName, { color: textColor, fontSize: 22 * fontSizeMultiplier }]}>Ashin James</Text>
           <Text style={styles.userEmail}>ashin.james@medally.app</Text>
           <View style={styles.tagBadge}>
             <Text style={styles.tagText}>🛡️ Emergency Profile Ready</Text>
@@ -40,13 +52,13 @@ export default function ProfileScreen() {
         </View>
 
         {/* Accessibility Features Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>♿ Accessibility Settings</Text>
+        <View style={[styles.section, { backgroundColor: cardColor }]}>
+          <Text style={[styles.sectionTitle, { color: textColor, fontSize: 18 * fontSizeMultiplier }]}>♿ Accessibility Settings</Text>
           
           <View style={styles.settingRow}>
             <View style={styles.settingTextGroup}>
-              <Text style={styles.settingTitle}>Large Font Mode</Text>
-              <Text style={styles.settingDesc}>Increases text size for easier reading</Text>
+              <Text style={[styles.settingTitle, { color: textColor, fontSize: 16 * fontSizeMultiplier }]}>Large Font Mode</Text>
+              <Text style={styles.settingDesc}>Increases text size app-wide</Text>
             </View>
             <Switch
               value={largeFont}
@@ -58,8 +70,8 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextGroup}>
-              <Text style={styles.settingTitle}>High Contrast Mode</Text>
-              <Text style={styles.settingDesc}>Enhances text and border readability</Text>
+              <Text style={[styles.settingTitle, { color: textColor, fontSize: 16 * fontSizeMultiplier }]}>High Contrast Mode</Text>
+              <Text style={styles.settingDesc}>Enhances background & text contrast app-wide</Text>
             </View>
             <Switch
               value={highContrast}
@@ -71,7 +83,7 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextGroup}>
-              <Text style={styles.settingTitle}>Voice Guidance Mode</Text>
+              <Text style={[styles.settingTitle, { color: textColor, fontSize: 16 * fontSizeMultiplier }]}>Voice Guidance Mode</Text>
               <Text style={styles.settingDesc}>Reads prescription results out loud</Text>
             </View>
             <Switch
@@ -84,7 +96,7 @@ export default function ProfileScreen() {
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextGroup}>
-              <Text style={styles.settingTitle}>Simple Language Mode</Text>
+              <Text style={[styles.settingTitle, { color: textColor, fontSize: 16 * fontSizeMultiplier }]}>Simple Language Mode</Text>
               <Text style={styles.settingDesc}>Replaces complex medical terms with plain words</Text>
             </View>
             <Switch
@@ -97,12 +109,12 @@ export default function ProfileScreen() {
         </View>
 
         {/* Preferences */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>⚙️ App Preferences</Text>
+        <View style={[styles.section, { backgroundColor: cardColor }]}>
+          <Text style={[styles.sectionTitle, { color: textColor, fontSize: 18 * fontSizeMultiplier }]}>⚙️ App Preferences</Text>
 
           <View style={styles.settingRow}>
             <View style={styles.settingTextGroup}>
-              <Text style={styles.settingTitle}>Dark Theme</Text>
+              <Text style={[styles.settingTitle, { color: textColor, fontSize: 16 * fontSizeMultiplier }]}>Dark Theme</Text>
               <Text style={styles.settingDesc}>Use comfortable dark colors</Text>
             </View>
             <Switch
@@ -119,7 +131,7 @@ export default function ProfileScreen() {
           <Text style={styles.emergencyIcon}>🆘</Text>
           <View style={styles.emergencyTextGroup}>
             <Text style={styles.emergencyTitle}>Emergency SOS Contact</Text>
-            <Text style={styles.emergencyDesc}>Tap to quickly contact emergency assistance</Text>
+            <Text style={styles.emergencyDesc}>Tap to quickly contact emergency assistance (+911234567890)</Text>
           </View>
         </TouchableOpacity>
       </ScrollView>
@@ -130,7 +142,6 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: colors.background,
     paddingTop: 50,
   },
   scrollContent: {
@@ -138,7 +149,6 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
   profileCard: {
-    backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 24,
     alignItems: 'center',
@@ -166,9 +176,7 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
   userName: {
-    fontSize: 22,
     fontWeight: 'bold',
-    color: colors.textPrimary,
   },
   userEmail: {
     fontSize: 14,
@@ -188,7 +196,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   section: {
-    backgroundColor: colors.surface,
     borderRadius: 16,
     padding: 20,
     marginBottom: 20,
@@ -196,9 +203,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
   },
   sectionTitle: {
-    fontSize: 18,
     fontWeight: 'bold',
-    color: colors.textPrimary,
     marginBottom: 16,
   },
   settingRow: {
@@ -214,9 +219,7 @@ const styles = StyleSheet.create({
     paddingRight: 16,
   },
   settingTitle: {
-    fontSize: 16,
     fontWeight: '600',
-    color: colors.textPrimary,
   },
   settingDesc: {
     fontSize: 13,

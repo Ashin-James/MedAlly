@@ -19,7 +19,7 @@ export default function SplashScreen({ navigation }: Props) {
       </View>
 
       <TouchableOpacity
-        onPress={() => navigation.replace('MainTabs')}
+        onPress={() => navigation.replace('Auth')}
         style={styles.primaryButton}
         activeOpacity={0.85}
       >

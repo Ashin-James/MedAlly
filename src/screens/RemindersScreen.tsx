@@ -1,6 +1,17 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import * as Notifications from 'expo-notifications';
 import { colors } from '../theme/colors';
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+    shouldShowBanner: true,
+    shouldShowList: true,
+  }),
+});
 
 interface ScheduleItem {
   id: string;
@@ -10,6 +21,7 @@ interface ScheduleItem {
   dosage: string;
   instructions: string;
   status: 'pending' | 'taken' | 'skipped';
+  notificationId?: string;
 }
 
 const initialSchedule: ScheduleItem[] = [
@@ -45,12 +57,82 @@ const initialSchedule: ScheduleItem[] = [
 export default function RemindersScreen() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(initialSchedule);
 
-  const toggleStatus = (id: string, newStatus: 'taken' | 'skipped') => {
-    setSchedule((prev) =>
-      prev.map((item) =>
-        item.id === id ? { ...item, status: item.status === newStatus ? 'pending' : newStatus } : item
-      )
-    );
+  useEffect(() => {
+    (async () => {
+      try {
+        const { status } = await Notifications.requestPermissionsAsync();
+        if (status === 'granted') {
+          // Schedule initial pending items
+          scheduleInitialNotifications();
+        }
+      } catch (err) {
+        console.warn('Notifications permission check failed:', err);
+      }
+    })();
+  }, []);
+
+  const scheduleInitialNotifications = async () => {
+    for (const item of schedule) {
+      if (item.status === 'pending' && !item.notificationId) {
+        try {
+          const id = await Notifications.scheduleNotificationAsync({
+            content: {
+              title: `💊 Medication Reminder: ${item.medicine}`,
+              body: `${item.timeSlot} dose (${item.dosage}): ${item.instructions}`,
+              data: { itemId: item.id },
+            },
+            trigger: { seconds: 10, repeats: false } as any,
+          });
+          setSchedule((prev) =>
+            prev.map((s) => (s.id === item.id ? { ...s, notificationId: id } : s))
+          );
+        } catch (e) {
+          console.warn('Failed to schedule notification:', e);
+        }
+      }
+    }
+  };
+
+  const toggleStatus = async (id: string, newStatus: 'taken' | 'skipped') => {
+    const targetItem = schedule.find((s) => s.id === id);
+    if (!targetItem) return;
+
+    const nextStatus = targetItem.status === newStatus ? 'pending' : newStatus;
+
+    if (nextStatus === 'taken' || nextStatus === 'skipped') {
+      if (targetItem.notificationId) {
+        try {
+          await Notifications.cancelScheduledNotificationAsync(targetItem.notificationId);
+        } catch (e) {
+          console.warn('Could not cancel notification:', e);
+        }
+      }
+      setSchedule((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: nextStatus, notificationId: undefined } : item
+        )
+      );
+    } else {
+      // Toggled back to pending -> reschedule notification
+      let newNotifId: string | undefined = undefined;
+      try {
+        newNotifId = await Notifications.scheduleNotificationAsync({
+          content: {
+            title: `💊 Medication Reminder: ${targetItem.medicine}`,
+            body: `${targetItem.timeSlot} dose (${targetItem.dosage}): ${targetItem.instructions}`,
+            data: { itemId: targetItem.id },
+          },
+          trigger: { seconds: 10, repeats: false } as any,
+        });
+      } catch (e) {
+        console.warn('Could not reschedule notification:', e);
+      }
+      setSchedule((prev) =>
+        prev.map((item) =>
+          item.id === id ? { ...item, status: 'pending', notificationId: newNotifId } : item
+        )
+      );
+    }
   };
 
   const takenCount = schedule.filter((s) => s.status === 'taken').length;
@@ -60,7 +142,7 @@ export default function RemindersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Medicine Schedule</Text>
-        <Text style={styles.headerSubtitle}>Track your daily dosages & reminders</Text>
+        <Text style={styles.headerSubtitle}>Track your daily dosages & local reminders</Text>
       </View>
 
       {/* Progress Card */}
