@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity, Alert, Linking } from 'react-native';
 import { colors } from '../theme/colors';
 
 export default function ProfileScreen() {
@@ -10,7 +10,18 @@ export default function ProfileScreen() {
   const [darkMode, setDarkMode] = useState(false);
 
   const emergencyCall = () => {
-    Alert.alert('Emergency Contact Called', 'Dialing Emergency Medical Contact (+1-800-MED-HELP)...');
+    Alert.alert(
+      'Call emergency contact now?',
+      'Dialing +911234567890 for emergency medical assistance.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Call',
+          style: 'destructive',
+          onPress: () => Linking.openURL('tel:+911234567890'),
+        },
+      ]
+    );
   };
 
   return (

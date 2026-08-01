@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -7,11 +7,15 @@ import { colors } from '../theme/colors';
 export default function HomeScreen({ navigation }: any) {
   const triggerSOS = () => {
     Alert.alert(
-      '🆘 Emergency Medical SOS',
-      'Contacting Emergency Helpline and notifying primary contacts (+1-800-MED-HELP)...',
+      'Call emergency contact now?',
+      'Dialing +911234567890 for emergency medical assistance.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Call Immediately', style: 'destructive', onPress: () => {} },
+        {
+          text: 'Call',
+          style: 'destructive',
+          onPress: () => Linking.openURL('tel:+911234567890'),
+        },
       ]
     );
   };

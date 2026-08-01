@@ -1,19 +1,41 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { View, Text, TouchableOpacity, ActivityIndicator, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
+import * as FileSystem from 'expo-file-system';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { scanPrescription } from '../services/geminiVision';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Scan'>;
 
+const loadingMessages = [
+  "🧠 Reading your prescription...",
+  "💊 Identifying medicines...",
+  "✨ Preparing results..."
+];
+
 export default function ScanScreen({ navigation }: Props) {
   const [permission, requestPermission] = useCameraPermissions();
   const [loading, setLoading] = useState(false);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastBase64, setLastBase64] = useState<string | null>(null);
   const cameraRef = useRef<CameraView>(null);
+
+  useEffect(() => {
+    let interval: any;
+    if (loading) {
+      setLoadingMsgIndex(0);
+      interval = setInterval(() => {
+        setLoadingMsgIndex((prev) => (prev + 1) % loadingMessages.length);
+      }, 2000);
+    }
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loading]);
 
   const processImage = async (base64: string | undefined | null) => {
     if (!base64) {
@@ -82,6 +104,26 @@ export default function ScanScreen({ navigation }: Props) {
     }
   };
 
+  const pickDocument = async () => {
+    setErrorMessage(null);
+    try {
+      const result = await DocumentPicker.getDocumentAsync({
+        type: ['application/pdf', 'image/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (!result.canceled && result.assets[0]) {
+        const fileUri = result.assets[0].uri;
+        const base64 = await FileSystem.readAsStringAsync(fileUri, {
+          encoding: FileSystem.EncodingType.Base64,
+        });
+        await processImage(base64);
+      }
+    } catch (err) {
+      setErrorMessage("Failed to pick document or report.");
+    }
+  };
+
   if (!permission) {
     return <View style={styles.container} />;
   }
@@ -101,8 +143,8 @@ export default function ScanScreen({ navigation }: Props) {
     <View style={styles.container}>
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#0284c7" />
-          <Text style={styles.loadingText}>🧠 Gemini is reading your prescription...</Text>
+          <Text style={styles.loadingText}>{loadingMessages[loadingMsgIndex]}</Text>
+          <ActivityIndicator size="large" color="#0284c7" style={{ marginTop: 16 }} />
         </View>
       ) : errorMessage ? (
         <View style={styles.errorContainer}>
@@ -139,6 +181,10 @@ export default function ScanScreen({ navigation }: Props) {
               <TouchableOpacity style={styles.captureButton} onPress={takePicture}>
                 <View style={styles.captureInner} />
               </TouchableOpacity>
+
+              <TouchableOpacity style={styles.secondaryButton} onPress={pickDocument}>
+                <Text style={styles.secondaryButtonText}>Upload PDF</Text>
+              </TouchableOpacity>
             </View>
           </View>
         </CameraView>
@@ -164,12 +210,13 @@ const styles = StyleSheet.create({
   loadingContainer: {
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 24,
   },
   loadingText: {
     color: '#ffffff',
     fontSize: 18,
     fontWeight: '600',
-    marginTop: 16,
+    textAlign: 'center',
   },
   errorContainer: {
     flex: 1,
@@ -276,12 +323,12 @@ const styles = StyleSheet.create({
   secondaryButton: {
     backgroundColor: 'rgba(15, 23, 42, 0.8)',
     paddingVertical: 12,
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     borderRadius: 20,
   },
   secondaryButtonText: {
     color: '#ffffff',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '600',
   },
   captureButton: {
