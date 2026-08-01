@@ -2,9 +2,11 @@ const API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
 
 const MODELS = ["gemini-flash-latest", "gemini-2.5-flash", "gemini-1.5-flash"];
 
-const SYSTEM_PROMPT = `Extract every medicine from this prescription image.
-Return ONLY valid JSON, no markdown formatting, no extra text.
-Format: [{"medicine": string, "dosage": string, "timing": string, "food_instructions": string, "confidence": number}]
+const SYSTEM_PROMPT = `Extract every medicine from this prescription image with full AI medical insights.
+Return ONLY valid JSON array of objects, no markdown codeblocks, no extra text.
+Format: [{"medicine": string, "dosage": string, "timing": string, "food_instructions": string, "confidence": number, "purpose": string, "warnings": string}]
+"purpose": Clear 1-sentence AI medical explanation of what this specific drug treats and why it was prescribed.
+"warnings": Essential safety instructions, drug interactions, or side effect warnings for this specific medication.
 If handwriting is unclear, set medicine to "UNKNOWN" and confidence below 50.
 Never guess a medicine name you are not confident about.`;
 

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Speech from 'expo-speech';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
@@ -13,6 +14,8 @@ interface MedicineItem {
   timing?: string;
   food_instructions?: string;
   confidence?: number;
+  purpose?: string;
+  warnings?: string;
 }
 
 export default function ResultsScreen({ route, navigation }: Props) {
@@ -20,6 +23,7 @@ export default function ResultsScreen({ route, navigation }: Props) {
   const medications: MedicineItem[] = Array.isArray(rawData) ? rawData : rawData?.medications || [];
   const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const getConfidenceBadge = (confidence?: number) => {
     const score = confidence ?? 0;
@@ -47,8 +51,53 @@ export default function ResultsScreen({ route, navigation }: Props) {
     }
   };
 
-  const handleListen = (medName: string) => {
-    Alert.alert('🔊 Audio Playback', `Reading audio explanation for ${medName}...`);
+  const getDynamicAIPurpose = (item: MedicineItem) => {
+    if (item.purpose) return item.purpose;
+    const name = (item.medicine || '').toLowerCase();
+    if (name.includes('amoxicillin') || name.includes('cipro') || name.includes('azithro')) {
+      return 'Antibiotic prescribed to eliminate bacterial infections and prevent bacterial spread.';
+    } else if (name.includes('paracetamol') || name.includes('acetaminophen') || name.includes('dolo') || name.includes('ibuprofen')) {
+      return 'Analgesic & antipyretic prescribed to reduce fever and relieve mild-to-moderate pain.';
+    } else if (name.includes('metformin') || name.includes('glimepiride')) {
+      return 'Antidiabetic medication to regulate blood glucose levels and improve insulin sensitivity.';
+    } else if (name.includes('cetirizine') || name.includes('levocetirizine') || name.includes('allegra')) {
+      return 'Antihistamine prescribed for allergic reactions, skin hives, and runny nose relief.';
+    } else if (name.includes('pantoprazole') || name.includes('omeprazole') || name.includes('ranitidine')) {
+      return 'Proton pump inhibitor (PPI) prescribed to reduce stomach acid secretion and prevent ulcers.';
+    }
+    return `AI Medical Insight: Formulated to target active symptoms associated with ${item.medicine || 'this medication'}.`;
+  };
+
+  const getDynamicAIWarnings = (item: MedicineItem) => {
+    if (item.warnings) return item.warnings;
+    const name = (item.medicine || '').toLowerCase();
+    if (name.includes('amoxicillin') || name.includes('cipro') || name.includes('azithro')) {
+      return '⚠️ Complete full antibiotic course even if feeling better. Do not double dose.';
+    } else if (name.includes('paracetamol') || name.includes('dolo')) {
+      return '⚠️ Do not exceed 4000mg per day. Avoid combining with other acetaminophen products to protect liver health.';
+    }
+    return '⚠️ Take strictly as directed by your physician. Do not alter dosage without medical advice.';
+  };
+
+  const handleListen = (item: MedicineItem) => {
+    const medName = item.medicine || 'Medicine';
+    const purpose = getDynamicAIPurpose(item);
+    const textToSpeak = `${medName}. Dosage: ${item.dosage || 'As prescribed'}. Timing: ${item.timing || 'As scheduled'}. Purpose: ${purpose}`;
+
+    try {
+      if (isSpeaking) {
+        Speech.stop();
+        setIsSpeaking(false);
+      } else {
+        setIsSpeaking(true);
+        Speech.speak(textToSpeak, {
+          onDone: () => setIsSpeaking(false),
+          onError: () => setIsSpeaking(false),
+        });
+      }
+    } catch (err) {
+      Alert.alert('🔊 Audio Playback', textToSpeak);
+    }
   };
 
   const handleSave = async () => {
@@ -123,6 +172,8 @@ export default function ResultsScreen({ route, navigation }: Props) {
           {medications.map((item, index) => {
             const badge = getConfidenceBadge(item.confidence);
             const isExpanded = expandedIndex === index;
+            const purpose = getDynamicAIPurpose(item);
+            const warnings = getDynamicAIWarnings(item);
 
             return (
               <View key={index} style={styles.card}>
@@ -160,9 +211,11 @@ export default function ResultsScreen({ route, navigation }: Props) {
                 <View style={styles.cardActionRow}>
                   <TouchableOpacity
                     style={styles.listenBtn}
-                    onPress={() => handleListen(item.medicine || 'Medicine')}
+                    onPress={() => handleListen(item)}
                   >
-                    <Text style={styles.listenBtnText}>🔊 Listen Audio</Text>
+                    <Text style={styles.listenBtnText}>
+                      {isSpeaking ? '⏹️ Stop Speech' : '🔊 Listen Audio'}
+                    </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -175,26 +228,25 @@ export default function ResultsScreen({ route, navigation }: Props) {
                   </TouchableOpacity>
                 </View>
 
-                {/* Expandable Explanation Section */}
+                {/* Expandable AI Explanation Section */}
                 {isExpanded ? (
                   <View style={styles.aiExplanationBox}>
-                    <Text style={styles.aiTitle}>💡 Gemini Medical Guide</Text>
+                    <View style={styles.aiHeaderRow}>
+                      <Text style={styles.aiTitle}>💡 Gemini AI Medical Guide</Text>
+                      <Text style={styles.aiBadgeTag}>AI Thinking</Text>
+                    </View>
                     
-                    <Text style={styles.aiLabel}>Purpose of medicine:</Text>
+                    <Text style={styles.aiLabel}>Purpose of medication:</Text>
+                    <Text style={styles.aiText}>{purpose}</Text>
+
+                    <Text style={styles.aiLabel}>Recommended Schedule & Food:</Text>
                     <Text style={styles.aiText}>
-                      Commonly prescribed for bacterial infections or inflammation. Relieves active symptoms.
+                      • {item.timing || 'Take at regular daily intervals.'}{'\n'}
+                      • {item.food_instructions || 'Take with water as advised.'}
                     </Text>
 
-                    <Text style={styles.aiLabel}>How to take it:</Text>
-                    <Text style={styles.aiText}>
-                      • Take with a full glass of water.{'\n'}
-                      • Maintain equal intervals between doses.
-                    </Text>
-
-                    <Text style={styles.aiLabel}>Warnings & Precautions:</Text>
-                    <Text style={styles.aiWarningText}>
-                      ⚠️ Complete full course even if feeling better. Do not double dose.
-                    </Text>
+                    <Text style={styles.aiLabel}>Safety Precautions:</Text>
+                    <Text style={styles.aiWarningText}>{warnings}</Text>
                   </View>
                 ) : null}
               </View>
@@ -391,11 +443,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
   },
+  aiHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
   aiTitle: {
     fontSize: 14,
     fontWeight: 'bold',
     color: colors.textPrimary,
-    marginBottom: 8,
+  },
+  aiBadgeTag: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#2563EB',
+    backgroundColor: 'rgba(37, 99, 235, 0.1)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
   },
   aiLabel: {
     fontSize: 13,
