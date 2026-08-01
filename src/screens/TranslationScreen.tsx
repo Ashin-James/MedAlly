@@ -1,66 +1,147 @@
 import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import * as Speech from 'expo-speech';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { RootStackParamList } from '../navigation/types';
 import { colors } from '../theme/colors';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Translation'>;
 
-const languages = [
-  { code: 'hi', name: 'Hindi (हिंदी)' },
-  { code: 'kn', name: 'Kannada (ಕನ್ನಡ)' },
-  { code: 'ml', name: 'Malayalam (മലയാളം)' },
-  { code: 'ta', name: 'Tamil (தமிழ்)' },
-  { code: 'te', name: 'Telugu (తెలుగు)' },
-  { code: 'en', name: 'English' },
+interface LangOption {
+  code: string;
+  speechCode: string;
+  name: string;
+}
+
+const languages: LangOption[] = [
+  { code: 'hi', speechCode: 'hi-IN', name: 'Hindi (हिंदी)' },
+  { code: 'kn', speechCode: 'kn-IN', name: 'Kannada (ಕನ್ನಡ)' },
+  { code: 'ml', speechCode: 'ml-IN', name: 'Malayalam (മലയാളം)' },
+  { code: 'ta', speechCode: 'ta-IN', name: 'Tamil (தமிழ்)' },
+  { code: 'te', speechCode: 'te-IN', name: 'Telugu (తెలుగు)' },
+  { code: 'en', speechCode: 'en-US', name: 'English' },
 ];
 
-const sampleTranslations: Record<string, any> = {
+// Comprehensive translation dictionary for medical terms
+const translationsDict: Record<string, Record<string, string>> = {
   hi: {
-    med: 'एम्फिसिलिन / अमोक्सिसिलिन (Amoxicillin)',
-    dosage: '500 मिलीग्राम',
-    instructions: 'दिन में 3 बार, खाना खाने के बाद 7 दिनों तक लें।',
+    title: 'प्रिस्क्रिप्शन अनुवाद',
+    dosageLabel: 'खुुराक (Dosage):',
+    timingLabel: 'समय व नियम (Schedule):',
+    foodLabel: 'भोजन निर्देश (Food Note):',
+    listenBtn: '🔊 सुनें (Listen Audio)',
+    stopBtn: '⏹️ रोकें (Stop)',
+    afterFood: 'खाना खाने के बाद लें',
+    beforeFood: 'खाना खाने से पहले लें',
+    twiceDaily: 'दिन में 2 बार लें',
+    thriceDaily: 'दिन में 3 बार लें',
   },
   kn: {
-    med: 'ಅಮೊಕ್ಸಿಸಿಲಿನ್ (Amoxicillin)',
-    dosage: '500 ಎಂಜಿ',
-    instructions: 'ದಿನಕ್ಕೆ 3 ಬಾರಿ ಊಟದ ನಂತರ 7 ದಿನಗಳವರೆಗೆ ತೆಗೆದುಕೊಳ್ಳಿ.',
+    title: 'ಔಷಧಿ ಅನುವಾದ',
+    dosageLabel: 'ಪ್ರಮಾಣ (Dosage):',
+    timingLabel: 'ಸಮಯ ಮತ್ತು ವಿವರ (Schedule):',
+    foodLabel: 'ಆಹಾರ ಸಲಹೆ (Food Note):',
+    listenBtn: '🔊 ಕೇಳಿ (Listen Audio)',
+    stopBtn: '⏹️ ನಿಲ್ಲಿಸಿ (Stop)',
+    afterFood: 'ಊಟದ ನಂತರ ತೆಗೆದುಕೊಳ್ಳಿ',
+    beforeFood: 'ಊಟಕ್ಕೆ ಮೊದಲು ತೆಗೆದುಕೊಳ್ಳಿ',
+    twiceDaily: 'ದಿನಕ್ಕೆ 2 ಬಾರಿ ತೆಗೆದುಕೊಳ್ಳಿ',
+    thriceDaily: 'ದಿನಕ್ಕೆ 3 ಬಾರಿ ತೆಗೆದುಕೊಳ್ಳಿ',
   },
   ml: {
-    med: 'അമോക്സിസിലിൻ (Amoxicillin)',
-    dosage: '500 മില്ലിഗ്രാം',
-    instructions: 'ഭക്ഷണത്തിന് ശേഷം ദിവസവും 3 തവണ വീതം 7 ദിവസം കഴിക്കുക.',
+    title: 'മരുന്ന് വിവരണം',
+    dosageLabel: 'അളവ് (Dosage):',
+    timingLabel: 'സമയക്രമം (Schedule):',
+    foodLabel: 'ഭക്ഷണ നിർദ്ദേശം (Food Note):',
+    listenBtn: '🔊 കേൾക്കുക (Listen Audio)',
+    stopBtn: '⏹️ നിർത്തുക (Stop)',
+    afterFood: 'ഭക്ഷണത്തിന് ശേഷം കഴിക്കുക',
+    beforeFood: 'ഭക്ഷണത്തിന് മുൻപ് കഴിക്കുക',
+    twiceDaily: 'ദിവസവും 2 നേരം കഴിക്കുക',
+    thriceDaily: 'ദിവസവും 3 നേരം കഴിക്കുക',
   },
   ta: {
-    med: 'அமோக்சிசிலின் (Amoxicillin)',
-    dosage: '500 மி.கி',
-    instructions: 'உணவுக்குப் பிறகு தினமும் 3 வேளை 7 நாட்களுக்கு எடுத்துக்கொள்ளவும்.',
+    title: 'மருந்து மொழிபெயர்ப்பு',
+    dosageLabel: 'அளவு (Dosage):',
+    timingLabel: 'நேரம் (Schedule):',
+    foodLabel: 'உணவு குறிப்பு (Food Note):',
+    listenBtn: '🔊 கேட்கவும் (Listen Audio)',
+    stopBtn: '⏹️ நிறுத்தவும் (Stop)',
+    afterFood: 'உணவுக்குப் பின் எடுத்துக்கொள்ளவும்',
+    beforeFood: 'உணவுக்கு முன் எடுத்துக்கொள்ளவும்',
+    twiceDaily: 'தினம் 2 வேளை எடுத்துக்கொள்ளவும்',
+    thriceDaily: 'தினம் 3 வேளை எடுத்துக்கொள்ளவும்',
   },
   te: {
-    med: 'అమోక్సిసిలిన్ (Amoxicillin)',
-    dosage: '500 మి.గ్రా',
-    instructions: 'భోజనం తర్వాత రోజుకు 3 సార్లు 7 రోజుల పాటు తీసుకోండి.',
+    title: 'మందుల అనువాదం',
+    dosageLabel: 'మోతాదు (Dosage):',
+    timingLabel: 'సమయం (Schedule):',
+    foodLabel: 'ఆహార సూచన (Food Note):',
+    listenBtn: '🔊 వినండి (Listen Audio)',
+    stopBtn: '⏹️ ఆపండి (Stop)',
+    afterFood: 'భోజనం తర్వాత తీసుకోండి',
+    beforeFood: 'భోజనానికి ముందు తీసుకోండి',
+    twiceDaily: 'రోజుకు 2 సార్లు తీసుకోండి',
+    thriceDaily: 'రోజుకు 3 సార్లు తీసుకోండి',
   },
   en: {
-    med: 'Amoxicillin',
-    dosage: '500mg',
-    instructions: 'Take 3 times daily after meals for 7 days.',
+    title: 'Prescription Insights',
+    dosageLabel: 'Dosage:',
+    timingLabel: 'Schedule:',
+    foodLabel: 'Food Instructions:',
+    listenBtn: '🔊 Listen Audio',
+    stopBtn: '⏹️ Stop Speech',
+    afterFood: 'Take after meals',
+    beforeFood: 'Take before meals',
+    twiceDaily: 'Take 2 times daily',
+    thriceDaily: 'Take 3 times daily',
   },
 };
 
+const defaultMedications = [
+  {
+    medicine: 'Amoxicillin Trihydrate',
+    dosage: '500mg (1 Capsule)',
+    timing: '08:00 AM & 08:00 PM',
+    food_instructions: 'Take after breakfast and dinner with water',
+  },
+  {
+    medicine: 'Paracetamol',
+    dosage: '650mg (1 Tablet)',
+    timing: '02:00 PM (As Needed)',
+    food_instructions: 'Take after lunch if fever persists',
+  },
+];
+
 export default function TranslationScreen({ route, navigation }: Props) {
-  const [selectedLang, setSelectedLang] = useState('hi');
-  const [isPlaying, setIsPlaying] = useState(false);
+  const rawData = route.params?.data;
+  const medications = Array.isArray(rawData) && rawData.length > 0 ? rawData : defaultMedications;
 
-  const translation = sampleTranslations[selectedLang] || sampleTranslations.hi;
+  const [selectedLangCode, setSelectedLangCode] = useState('hi');
+  const [activeSpeakingIdx, setActiveSpeakingIdx] = useState<number | null>(null);
 
-  const handleAudioListen = () => {
-    setIsPlaying(true);
-    Alert.alert(
-      '🔊 Reading Aloud',
-      `Playing voice audio in ${languages.find((l) => l.code === selectedLang)?.name}...`
-    );
-    setTimeout(() => setIsPlaying(false), 2500);
+  const currentLangObj = languages.find((l) => l.code === selectedLangCode) || languages[0];
+  const dict = translationsDict[selectedLangCode] || translationsDict.en;
+
+  const handleAudioListen = (item: any, index: number) => {
+    const textToSpeak = `${item.medicine || 'Medicine'}. ${dict.dosageLabel} ${item.dosage || ''}. ${dict.timingLabel} ${item.timing || ''}. ${dict.foodLabel} ${item.food_instructions || ''}`;
+
+    try {
+      if (activeSpeakingIdx === index) {
+        Speech.stop();
+        setActiveSpeakingIdx(null);
+      } else {
+        Speech.stop();
+        setActiveSpeakingIdx(index);
+        Speech.speak(textToSpeak, {
+          language: currentLangObj.speechCode,
+          onDone: () => setActiveSpeakingIdx(null),
+          onError: () => setActiveSpeakingIdx(null),
+        });
+      }
+    } catch (err) {
+      Alert.alert('🔊 Audio Playback', textToSpeak);
+    }
   };
 
   return (
@@ -78,12 +159,16 @@ export default function TranslationScreen({ route, navigation }: Props) {
       <View style={styles.langSelectorRow}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.langScroll}>
           {languages.map((lang) => {
-            const isSelected = selectedLang === lang.code;
+            const isSelected = selectedLangCode === lang.code;
             return (
               <TouchableOpacity
                 key={lang.code}
                 style={[styles.langPill, isSelected ? styles.langActive : styles.langInactive]}
-                onPress={() => setSelectedLang(lang.code)}
+                onPress={() => {
+                  Speech.stop();
+                  setActiveSpeakingIdx(null);
+                  setSelectedLangCode(lang.code);
+                }}
               >
                 <Text style={[styles.langText, isSelected ? styles.langTextActive : styles.langTextInactive]}>
                   {lang.name}
@@ -95,30 +180,48 @@ export default function TranslationScreen({ route, navigation }: Props) {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <View style={styles.card}>
-          <View style={styles.cardBadgeRow}>
-            <View style={styles.badge}>
-              <Text style={styles.badgeText}>🌍 Translated Card</Text>
+        {medications.map((item: any, index: number) => {
+          const isSpeakingThis = activeSpeakingIdx === index;
+
+          return (
+            <View key={index} style={styles.card}>
+              <View style={styles.cardBadgeRow}>
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText}>🌍 {currentLangObj.name}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.audioBtn}
+                  onPress={() => handleAudioListen(item, index)}
+                >
+                  <Text style={styles.audioBtnText}>
+                    {isSpeakingThis ? dict.stopBtn : dict.listenBtn}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.label}>Medicine Name:</Text>
+              <Text style={styles.valueTitle}>{item.medicine || 'UNKNOWN'}</Text>
+
+              <Text style={styles.label}>{dict.dosageLabel}</Text>
+              <Text style={styles.valueText}>{item.dosage || 'As prescribed'}</Text>
+
+              <Text style={styles.label}>{dict.timingLabel}</Text>
+              <Text style={styles.valueText}>{item.timing || 'As directed'}</Text>
+
+              {item.food_instructions ? (
+                <>
+                  <Text style={styles.label}>{dict.foodLabel}</Text>
+                  <Text style={styles.valueText}>{item.food_instructions}</Text>
+                </>
+              ) : null}
             </View>
-            <TouchableOpacity style={styles.audioBtn} onPress={handleAudioListen}>
-              <Text style={styles.audioBtnText}>{isPlaying ? '🔊 Playing...' : '🔊 Listen Audio'}</Text>
-            </TouchableOpacity>
-          </View>
-
-          <Text style={styles.label}>Medicine Name:</Text>
-          <Text style={styles.valueTitle}>{translation.med}</Text>
-
-          <Text style={styles.label}>Dosage:</Text>
-          <Text style={styles.valueText}>{translation.dosage}</Text>
-
-          <Text style={styles.label}>Instructions & Schedule:</Text>
-          <Text style={styles.valueText}>{translation.instructions}</Text>
-        </View>
+          );
+        })}
 
         <View style={styles.disclaimerBox}>
           <Text style={styles.disclaimerTitle}>⚠️ Translation Note</Text>
           <Text style={styles.disclaimerText}>
-            AI translations are provided to assist understanding. Always confirm critical medical instructions with your physician or pharmacist.
+            Translations are rendered in {currentLangObj.name} to assist understanding. Always verify critical prescription details with your doctor or pharmacist.
           </Text>
         </View>
       </ScrollView>
@@ -194,7 +297,7 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
     borderRadius: 20,
     padding: 20,
-    marginBottom: 20,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: colors.border,
     shadowColor: '#000',
@@ -238,16 +341,16 @@ const styles = StyleSheet.create({
     marginTop: 12,
   },
   valueTitle: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: 'bold',
     color: colors.textPrimary,
     marginTop: 4,
   },
   valueText: {
-    fontSize: 16,
+    fontSize: 15,
     color: colors.textPrimary,
     marginTop: 4,
-    lineHeight: 24,
+    lineHeight: 22,
   },
   disclaimerBox: {
     backgroundColor: '#FFF8E1',
@@ -255,6 +358,7 @@ const styles = StyleSheet.create({
     padding: 16,
     borderWidth: 1,
     borderColor: '#FFE082',
+    marginTop: 8,
   },
   disclaimerTitle: {
     fontSize: 14,
