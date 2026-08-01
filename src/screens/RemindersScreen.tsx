@@ -1,22 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity } from 'react-native';
-import * as Notifications from 'expo-notifications';
 import { colors } from '../theme/colors';
-
-// Configure local notification behavior safely
-try {
-  Notifications.setNotificationHandler({
-    handleNotification: async () => ({
-      shouldShowAlert: true,
-      shouldPlaySound: true,
-      shouldSetBadge: false,
-      shouldShowBanner: true,
-      shouldShowList: true,
-    }),
-  });
-} catch (e) {
-  console.warn('Local notifications setup:', e);
-}
 
 interface ScheduleItem {
   id: string;
@@ -26,7 +10,6 @@ interface ScheduleItem {
   dosage: string;
   instructions: string;
   status: 'pending' | 'taken' | 'skipped';
-  notificationId?: string;
 }
 
 const initialSchedule: ScheduleItem[] = [
@@ -62,81 +45,16 @@ const initialSchedule: ScheduleItem[] = [
 export default function RemindersScreen() {
   const [schedule, setSchedule] = useState<ScheduleItem[]>(initialSchedule);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        // Request local notification permissions only
-        const { status } = await Notifications.requestPermissionsAsync();
-        if (status === 'granted') {
-          scheduleInitialNotifications();
+  const toggleStatus = (id: string, newStatus: 'taken' | 'skipped') => {
+    setSchedule((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const nextStatus = item.status === newStatus ? 'pending' : newStatus;
+          return { ...item, status: nextStatus };
         }
-      } catch (err) {
-        console.warn('Local notification permission check:', err);
-      }
-    })();
-  }, []);
-
-  const scheduleInitialNotifications = async () => {
-    for (const item of schedule) {
-      if (item.status === 'pending' && !item.notificationId) {
-        try {
-          const id = await Notifications.scheduleNotificationAsync({
-            content: {
-              title: `💊 Medication Reminder: ${item.medicine}`,
-              body: `${item.timeSlot} dose (${item.dosage}): ${item.instructions}`,
-              data: { itemId: item.id },
-            },
-            trigger: { seconds: 10, repeats: false } as any,
-          });
-          setSchedule((prev) =>
-            prev.map((s) => (s.id === item.id ? { ...s, notificationId: id } : s))
-          );
-        } catch (e) {
-          console.warn('Failed to schedule local notification:', e);
-        }
-      }
-    }
-  };
-
-  const toggleStatus = async (id: string, newStatus: 'taken' | 'skipped') => {
-    const targetItem = schedule.find((s) => s.id === id);
-    if (!targetItem) return;
-
-    const nextStatus = targetItem.status === newStatus ? 'pending' : newStatus;
-
-    if (nextStatus === 'taken' || nextStatus === 'skipped') {
-      if (targetItem.notificationId) {
-        try {
-          await Notifications.cancelScheduledNotificationAsync(targetItem.notificationId);
-        } catch (e) {
-          console.warn('Could not cancel notification:', e);
-        }
-      }
-      setSchedule((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, status: nextStatus, notificationId: undefined } : item
-        )
-      );
-    } else {
-      let newNotifId: string | undefined = undefined;
-      try {
-        newNotifId = await Notifications.scheduleNotificationAsync({
-          content: {
-            title: `💊 Medication Reminder: ${targetItem.medicine}`,
-            body: `${targetItem.timeSlot} dose (${targetItem.dosage}): ${targetItem.instructions}`,
-            data: { itemId: targetItem.id },
-          },
-          trigger: { seconds: 10, repeats: false } as any,
-        });
-      } catch (e) {
-        console.warn('Could not reschedule notification:', e);
-      }
-      setSchedule((prev) =>
-        prev.map((item) =>
-          item.id === id ? { ...item, status: 'pending', notificationId: newNotifId } : item
-        )
-      );
-    }
+        return item;
+      })
+    );
   };
 
   const takenCount = schedule.filter((s) => s.status === 'taken').length;
@@ -146,7 +64,7 @@ export default function RemindersScreen() {
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Medicine Schedule</Text>
-        <Text style={styles.headerSubtitle}>Track your daily dosages & local reminders</Text>
+        <Text style={styles.headerSubtitle}>Track your daily dosages & medicine reminders</Text>
       </View>
 
       {/* Progress Card */}
