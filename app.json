@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "MedAlly_temp",
-    "slug": "MedAlly_temp",
+    "name": "MedAlly",
+    "slug": "MedAlly",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
